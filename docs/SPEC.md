@@ -149,6 +149,7 @@ type EnemyState = {
   t: number          // прогресс 0..1
   position: Vector3  // пишется в useFrame врага, читается башнями
   hp: number         // копируется из WaveConfig при спавне
+  speed: number      // копируется из WaveConfig при спавне
   reward: number     // копируется из WaveConfig при спавне
 }
 ```
