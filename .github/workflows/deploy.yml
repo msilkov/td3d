@@ -10,21 +10,14 @@ concurrency:
   group: deploy-production
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
-  deploy:
+  # Сборка без секретов: npm ci, линтер, тесты и vite build исполняют код
+  # зависимостей, и прод-токен этому коду недоступен в принципе.
+  build:
     runs-on: ubuntu-latest
-
-    # Секреты лежат в окружении Production: без строки ниже
-    # ${{ secrets.VERCEL_TOKEN }} молча развернётся в пустую строку.
-    environment: Production
-
-    env:
-      # Не секреты, а идентификаторы проекта: те же, что в .vercel/project.json.
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      # Токен — нет: он выдаётся только шагам Vercel ниже, чтобы npm ci и код
-      # зависимостей в линтере и тестах его не видели.
-      VERCEL_CLI: 60.1.3
 
     steps:
       # Прод собирается только из main. Запуск с другой ветки — почти всегда
@@ -46,25 +39,50 @@ jobs:
 
       - run: npm ci
 
-      # Типы проверяет сборка ниже: vercel build зовёт npm run build, а там tsc -b.
       - name: Линтер и тесты
         run: |
           npm run lint
           npm test
 
-      # Версия CLI закреплена: с прод-токеном исполняется ровно проверенный код,
-      # а не то, что окажется в npm под latest в момент запуска.
-      - name: Забрать настройки проекта
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: npx vercel@$VERCEL_CLI pull --yes --environment=production --token="$VERCEL_TOKEN"
-
+      # Статика в формате Build Output API — его и ждёт vercel deploy --prebuilt.
+      # Каталог не скрытый: upload-artifact пропускает пути с точкой.
       - name: Собрать
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: npx vercel@$VERCEL_CLI build --prod --token="$VERCEL_TOKEN"
+        run: |
+          npm run build
+          mkdir -p vercel-output
+          cp -r dist vercel-output/static
+          echo '{"version":3}' > vercel-output/config.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vercel-output
+          path: vercel-output
+          retention-days: 1
+
+  # Выкат с токеном: здесь нет ни исходников, ни node_modules — только готовая
+  # статика и CLI Vercel закреплённой версии.
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    # Секреты лежат в окружении Production: без строки ниже
+    # ${{ secrets.VERCEL_TOKEN }} молча развернётся в пустую строку.
+    environment: Production
+
+    env:
+      # Не секреты, а идентификаторы проекта: те же, что в .vercel/project.json.
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      # С прод-токеном исполняется ровно проверенный код, а не то, что окажется
+      # в npm под latest в момент запуска.
+      VERCEL_CLI: 60.1.3
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: vercel-output
+          path: .vercel/output
 
       - name: Выкатить
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: npx vercel@$VERCEL_CLI deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+        run: npx --yes vercel@$VERCEL_CLI deploy --prebuilt --prod --token="$VERCEL_TOKEN"
