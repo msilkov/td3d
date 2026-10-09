@@ -1,3 +1,4 @@
+import EndScreen from './components/EndScreen'
 import HUD from './components/HUD'
 import Scene from './components/Scene'
 
@@ -6,6 +7,7 @@ function App() {
     <>
       <Scene />
       <HUD />
+      <EndScreen />
     </>
   )
 }
