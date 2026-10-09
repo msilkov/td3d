@@ -19,35 +19,40 @@ const BALL_SCALE = 1.4
 const FLIGHT_TIME = 0.25 // секунд полёта ядра
 const ARC_HEIGHT = 0.6 // высота дуги над прямой от дула к цели
 const TARGET_HEIGHT = 0.3 // центр модели врага над дорогой
+const TURN_RATE = 10 // скорость доводки пушки к цели, 1/с
+const HOP_HEIGHT = 0.5
+const HOP_TIME = 0.35 // секунд на один прыжок
+const HOP_COUNT = 2
 
 useGLTF.preload([BODY_URL, WEAPON_URL, BALL_URL])
 
-function TowerModel({ position }: { position: Vec3 }) {
-  const [body, weapon] = useGLTF([BODY_URL, WEAPON_URL])
-  return (
-    <group position={position} scale={TOWER_SCALE}>
-      <Clone object={body.scene} />
-      <Clone object={weapon.scene} position-y={BODY_HEIGHT} />
-    </group>
-  )
+function Model({ url, scale }: { url: string; scale?: number }) {
+  const { scene } = useGLTF(url)
+  return <Clone object={scene} scale={scale} />
 }
 
-function Ball() {
-  const { scene } = useGLTF(BALL_URL)
-  return <Clone object={scene} scale={BALL_SCALE} />
+// Поворачивает пушку к точке по кратчайшей дуге; модель смотрит дулом в +Z.
+function turnTowards(weapon: Group, from: Vector3, to: Vector3, delta: number) {
+  const angle = Math.atan2(to.x - from.x, to.z - from.z)
+  const diff = angle - weapon.rotation.y
+  const shortest = Math.atan2(Math.sin(diff), Math.cos(diff))
+  weapon.rotation.y += shortest * (1 - Math.exp(-TURN_RATE * delta))
 }
 
 function Tower({ position, type }: { position: Vec3; type: TowerType }) {
   const origin = useMemo(() => new Vector3(...position), [position])
   // 0 — только что построенная башня готова стрелять сразу.
   const cooldown = useRef(0)
+  const hopTime = useRef(0)
+  const model = useRef<Group>(null)
+  const weapon = useRef<Group>(null)
   const flight = useRef(0)
   const ball = useRef<Group>(null)
   const ballFrom = useMemo(() => new Vector3(position[0], position[1] + SHOT_HEIGHT, position[2]), [position])
   const ballTo = useRef(new Vector3())
 
   useFrame((_, delta) => {
-    if (!ball.current) return
+    if (!ball.current || !model.current) return
 
     flight.current = Math.max(flight.current - delta, 0)
     ball.current.visible = flight.current > 0
@@ -57,16 +62,23 @@ function Tower({ position, type }: { position: Vec3; type: TowerType }) {
       ball.current.position.y += 4 * ARC_HEIGHT * progress * (1 - progress)
     }
 
+    // Победа: башня пару раз подпрыгивает и встаёт на место (SPEC §6).
+    const status = useGameStore.getState().status
+    hopTime.current = status === 'won' ? hopTime.current + delta : 0
+    const hop = Math.min(hopTime.current / HOP_TIME, HOP_COUNT)
+    model.current.position.y = position[1] + HOP_HEIGHT * Math.abs(Math.sin(Math.PI * hop))
+
     // Вне playing башня не стреляет: после финала деньги не начисляются (SPEC §4).
     // Ядро выше долетает и после финала, чтобы не застыть в воздухе.
-    if (useGameStore.getState().status !== 'playing') return
+    if (status !== 'playing') return
+
+    // Пушка следит за целью каждый кадр, а не только в момент выстрела.
+    const target = pickTarget(origin, type.range, getEnemies(), 'nearest')
+    if (target && weapon.current) turnTowards(weapon.current, origin, target.position, delta)
 
     // Перезарядка отсчитывается всегда, даже без цели.
     cooldown.current = Math.max(cooldown.current - delta, 0)
-    if (cooldown.current > 0) return
-
-    const target = pickTarget(origin, type.range, getEnemies(), 'nearest')
-    if (!target) return
+    if (cooldown.current > 0 || !target) return
     ballTo.current.copy(target.position).setY(target.position.y + TARGET_HEIGHT)
     flight.current = FLIGHT_TIME
     damageEnemy(target.id, type.damage)
@@ -75,12 +87,17 @@ function Tower({ position, type }: { position: Vec3; type: TowerType }) {
 
   return (
     <>
-      <Suspense fallback={null}>
-        <TowerModel position={position} />
-      </Suspense>
+      <group ref={model} position={position} scale={TOWER_SCALE}>
+        <Suspense fallback={null}>
+          <Model url={BODY_URL} />
+          <group ref={weapon} position-y={BODY_HEIGHT}>
+            <Model url={WEAPON_URL} />
+          </group>
+        </Suspense>
+      </group>
       <group ref={ball} visible={false}>
         <Suspense fallback={null}>
-          <Ball />
+          <Model url={BALL_URL} scale={BALL_SCALE} />
         </Suspense>
       </group>
     </>

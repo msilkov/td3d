@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import { OrthographicCamera } from '@react-three/drei'
 import { level1 } from '../game/config/level1'
+import EndScene from './EndScene'
 import Enemies from './Enemies'
 import Ground from './Ground'
 import Scenery from './Scenery'
@@ -36,8 +37,7 @@ function Scene() {
   return (
     <Canvas>
       <MapCamera width={MAP_WIDTH} depth={MAP_DEPTH} />
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[10, 20, 5]} intensity={1.5} />
+      <EndScene />
       <Ground width={MAP_WIDTH} depth={MAP_DEPTH} />
       {/* Сцена появляется целиком, когда загружены модели окружения и слотов. */}
       <Suspense fallback={null}>
