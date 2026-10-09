@@ -9,3 +9,9 @@ body,
 body {
   background: #1b1e24;
 }
+
+.hud {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+}

@@ -30,7 +30,12 @@ export const level1: LevelConfig = {
     [16, 0, 4],
   ],
   slots: [],
-  waves: [{ count: 10, interval: 1, enemyHp: 10, enemySpeed: 3, reward: 5 }],
+  // Временный состав до баланса (7.7): врагов меньше startLives, чтобы без башен партия доходила до победы.
+  waves: [
+    { count: 3, interval: 1, enemyHp: 10, enemySpeed: 3, reward: 5 },
+    { count: 5, interval: 1, enemyHp: 10, enemySpeed: 3, reward: 5 },
+    { count: 7, interval: 1, enemyHp: 10, enemySpeed: 3, reward: 5 },
+  ],
   wavePause: 5,
   startMoney: 100,
   startLives: 20,
