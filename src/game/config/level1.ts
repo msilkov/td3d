@@ -37,13 +37,14 @@ export const level1: LevelConfig = {
     [6, 0, -1],
     [13, 0, 0],
   ],
-  // Временный состав до баланса (7.7): врагов меньше startLives, чтобы без башен партия доходила до победы.
+  // Баланс (7.7): врагов больше startLives — без башен партия проигрывается; одна или две башни
+  // не держат третью волну, четыре держат её без потерь.
   waves: [
-    { count: 3, interval: 1, enemyHp: 10, enemySpeed: 3, reward: 5 },
-    { count: 5, interval: 1, enemyHp: 10, enemySpeed: 3, reward: 5 },
-    { count: 7, interval: 1, enemyHp: 10, enemySpeed: 3, reward: 5 },
+    { count: 8, interval: 1.2, enemyHp: 10, enemySpeed: 2.5, reward: 6 },
+    { count: 12, interval: 1, enemyHp: 15, enemySpeed: 2.5, reward: 6 },
+    { count: 16, interval: 0.8, enemyHp: 24, enemySpeed: 2.8, reward: 7 },
   ],
   wavePause: 5,
   startMoney: 100,
-  startLives: 20,
+  startLives: 10,
 }
