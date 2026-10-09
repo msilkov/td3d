@@ -1,6 +1,6 @@
-import { useMemo, useRef, type ComponentRef } from 'react'
+import { Suspense, useMemo, useRef, type ComponentRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Line } from '@react-three/drei'
+import { Clone, Line, useGLTF } from '@react-three/drei'
 import { Vector3 } from 'three'
 import type { Vec3 } from '../game/config/level1'
 import type { TowerType } from '../game/config/towers'
@@ -8,9 +8,25 @@ import { damageEnemy, getEnemies } from '../game/enemies'
 import { useGameStore } from '../game/store'
 import { pickTarget } from '../game/targeting'
 
-const TOWER_HEIGHT = 1.5
+const BODY_URL = '/models/tower-round-build-a.glb'
+const WEAPON_URL = '/models/weapon-cannon.glb'
+const TOWER_SCALE = 1.4
+const BODY_HEIGHT = 1 // в единицах пака; пушка стоит на краю корпуса
+const SHOT_HEIGHT = 1.9 // дуло пушки над землёй
 const SHOT_DURATION = 0.1 // секунд, сколько видна линия выстрела
-const TARGET_HEIGHT = 0.4 // центр куба врага над дорогой
+const TARGET_HEIGHT = 0.3 // центр модели врага над дорогой
+
+useGLTF.preload([BODY_URL, WEAPON_URL])
+
+function TowerModel({ position }: { position: Vec3 }) {
+  const [body, weapon] = useGLTF([BODY_URL, WEAPON_URL])
+  return (
+    <group position={position} scale={TOWER_SCALE}>
+      <Clone object={body.scene} />
+      <Clone object={weapon.scene} position-y={BODY_HEIGHT} />
+    </group>
+  )
+}
 
 function Tower({ position, type }: { position: Vec3; type: TowerType }) {
   const origin = useMemo(() => new Vector3(...position), [position])
@@ -37,7 +53,7 @@ function Tower({ position, type }: { position: Vec3; type: TowerType }) {
     const target = pickTarget(origin, type.range, getEnemies(), 'nearest')
     if (!target) return
     const { x, y, z } = target.position
-    line.geometry.setPositions([origin.x, origin.y + TOWER_HEIGHT, origin.z, x, y + TARGET_HEIGHT, z])
+    line.geometry.setPositions([origin.x, origin.y + SHOT_HEIGHT, origin.z, x, y + TARGET_HEIGHT, z])
     line.visible = true
     shotTimer.current = SHOT_DURATION
     damageEnemy(target.id, type.damage)
@@ -46,10 +62,9 @@ function Tower({ position, type }: { position: Vec3; type: TowerType }) {
 
   return (
     <>
-      <mesh position={[position[0], position[1] + TOWER_HEIGHT / 2, position[2]]}>
-        <cylinderGeometry args={[0.5, 0.6, TOWER_HEIGHT, 16]} />
-        <meshStandardMaterial color="#2c6fbb" />
-      </mesh>
+      <Suspense fallback={null}>
+        <TowerModel position={position} />
+      </Suspense>
       <Line ref={shotLine} points={[origin, origin]} color="#ffd54a" lineWidth={3} />
     </>
   )
