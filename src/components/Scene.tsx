@@ -1,5 +1,6 @@
 import { Canvas, useThree } from '@react-three/fiber'
 import { OrthographicCamera } from '@react-three/drei'
+import Enemies from './Enemies'
 import Ground from './Ground'
 
 const MAP_WIDTH = 32
@@ -34,6 +35,7 @@ function Scene() {
       <ambientLight intensity={0.6} />
       <directionalLight position={[10, 20, 5]} intensity={1.5} />
       <Ground width={MAP_WIDTH} depth={MAP_DEPTH} />
+      <Enemies />
     </Canvas>
   )
 }
