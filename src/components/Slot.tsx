@@ -35,7 +35,11 @@ function Slot({ index, position }: { index: number; position: Vec3 }) {
 
   function handleClick(e: ThreeEvent<MouseEvent>) {
     e.stopPropagation()
-    if (!tower) buildTower(index, BUILD_TYPE)
+    if (tower) return
+    buildTower(index, BUILD_TYPE)
+    // Площадка под курсором размонтируется без pointerout — иначе кольцо залипнет,
+    // если курсор уйдёт, не задев башню. Над башней следующий pointerover вернёт его.
+    setHovered(false)
   }
 
   return (

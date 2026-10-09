@@ -1,0 +1,60 @@
+name: Deploy
+
+# Только вручную. Пуш в main прод не выкатывает: решение о выкате принимает
+# человек, а не слияние PR. Автодеплой Vercel выключен в vercel.json, эта
+# кнопка — единственный путь на прод.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    # Секреты лежат в окружении Production: без строки ниже
+    # ${{ secrets.VERCEL_TOKEN }} молча развернётся в пустую строку.
+    environment: Production
+
+    env:
+      # Не секреты, а идентификаторы проекта: те же, что в .vercel/project.json.
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+    steps:
+      # Прод собирается только из main. Запуск с другой ветки — почти всегда
+      # промах в выпадающем списке, и лучше упасть, чем выкатить не то.
+      - name: Проверить ветку
+        if: github.ref_name != 'main'
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          echo "::error::прод собирается только из main, а запуск пришёл с $REF_NAME"
+          exit 1
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # Типы проверяет сборка ниже: vercel build зовёт npm run build, а там tsc -b.
+      - name: Линтер и тесты
+        run: |
+          npm run lint
+          npm test
+
+      - name: Забрать настройки проекта
+        run: npx vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Собрать
+        run: npx vercel build --prod --token="$VERCEL_TOKEN"
+
+      - name: Выкатить
+        run: npx vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
