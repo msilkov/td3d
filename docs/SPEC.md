@@ -141,6 +141,9 @@ type LevelConfig = {
 `t += enemySpeed * delta / curveLength`, позиция — `curve.getPointAt(t)` (параметризация
 по длине дуги, без рывков на изгибах). Длина кривой считается один раз.
 
+**Типы башен** — `towerTypes` в `config/towers.ts`, ключ — `TowerType.id`. Они общие для всех
+уровней, поэтому не в `LevelConfig`. В MVP один тип, `basic`.
+
 ### Реестр врагов
 
 ```ts
@@ -156,7 +159,8 @@ type EnemyState = {
 
 Функции реестра: `spawnEnemy(wave)`, `damageEnemy(id, amount)` (при hp ≤ 0 → `killEnemy`),
 `killEnemy(id)` (удалить, `money += reward`, идемпотентно), `leakEnemy(id)` (удалить,
-`lives--`, при 0 → `lost`), `clearEnemies()` (для рестарта).
+`lives--`, при 0 → `lost`), `clearEnemies()` (для рестарта). Чтение без изменений:
+`getEnemy(id)` — для `<Enemy>`, `getEnemies()` — все живые враги, для `pickTarget`.
 
 ### Стор (zustand)
 
@@ -202,7 +206,8 @@ type GameStore = {
 ### Бой
 
 - **Выбор цели** — чистая функция `pickTarget(towerPosition, range, enemies, mode)`.
-  В MVP один режим `'nearest'` — ближайший к башне враг в радиусе. Новый режим потом
+  В MVP один режим `'nearest'` — ближайший к башне враг в радиусе. «В радиусе» — расстояние
+  до врага ≤ `range`, граница включена. Новый режим потом
   добавляется веткой в функции и кнопкой в UI, без переписывания `<Tower>`.
 - **Перезарядка** отсчитывается всегда, даже без цели. Только что построенная башня
   готова стрелять сразу. Выстрел — когда башня готова и цель есть.
@@ -213,6 +218,7 @@ type GameStore = {
 src/
   game/
     config/level1.ts     LevelConfig
+    config/towers.ts     TowerType, towerTypes
     store.ts             zustand
     enemies.ts           реестр врагов + spawn/damage/kill/leak/clear
     targeting.ts         pickTarget
