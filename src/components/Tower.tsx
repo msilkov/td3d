@@ -5,6 +5,7 @@ import { Vector3 } from 'three'
 import type { Vec3 } from '../game/config/level1'
 import type { TowerType } from '../game/config/towers'
 import { damageEnemy, getEnemies } from '../game/enemies'
+import { useGameStore } from '../game/store'
 import { pickTarget } from '../game/targeting'
 
 const TOWER_HEIGHT = 1.5
@@ -24,6 +25,10 @@ function Tower({ position, type }: { position: Vec3; type: TowerType }) {
 
     shotTimer.current = Math.max(shotTimer.current - delta, 0)
     line.visible = shotTimer.current > 0
+
+    // Вне playing башня не стреляет: после финала деньги не начисляются (SPEC §4).
+    // Линия выше гаснет и после финала, чтобы не застыть на экране.
+    if (useGameStore.getState().status !== 'playing') return
 
     // Перезарядка отсчитывается всегда, даже без цели.
     cooldown.current = Math.max(cooldown.current - delta, 0)

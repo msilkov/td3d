@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import type { Mesh } from 'three'
 import { pathCurve, pathLength } from '../game/curve'
 import { getEnemy, leakEnemy } from '../game/enemies'
+import { useGameStore } from '../game/store'
 
 const ENEMY_SIZE = 0.8
 
@@ -10,6 +11,8 @@ function Enemy({ id }: { id: number }) {
   const mesh = useRef<Mesh>(null)
 
   useFrame((_, delta) => {
+    // После победы или поражения сцена замирает (SPEC §4).
+    if (useGameStore.getState().status !== 'playing') return
     const enemy = getEnemy(id)
     if (!enemy || !mesh.current) return
 

@@ -64,4 +64,14 @@ describe('стор', () => {
     expect(towers).toEqual([])
     expect(money).toBe(level1.startMoney)
   })
+
+  it.each(['won', 'lost'] as const)('reset после %s возвращает значения уровня и статус idle', (status) => {
+    useGameStore.setState({ status, lives: 0, waveIndex: 2, money: 999 })
+    useGameStore.getState().reset()
+    const { status: next, lives, waveIndex, money } = useGameStore.getState()
+    expect(next).toBe('idle')
+    expect(lives).toBe(level1.startLives)
+    expect(waveIndex).toBe(0)
+    expect(money).toBe(level1.startMoney)
+  })
 })
