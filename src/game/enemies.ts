@@ -20,6 +20,10 @@ export function getEnemy(id: number): EnemyState | undefined {
   return enemies.get(id)
 }
 
+export function getEnemies(): Iterable<EnemyState> {
+  return enemies.values()
+}
+
 export function spawnEnemy(wave: WaveConfig): number {
   const id = nextId++
   enemies.set(id, {
@@ -32,6 +36,23 @@ export function spawnEnemy(wave: WaveConfig): number {
   })
   useGameStore.setState((s) => ({ enemyIds: [...s.enemyIds, id] }))
   return id
+}
+
+export function damageEnemy(id: number, amount: number): void {
+  const enemy = enemies.get(id)
+  if (!enemy) return
+  enemy.hp -= amount
+  if (enemy.hp <= 0) killEnemy(id)
+}
+
+export function killEnemy(id: number): void {
+  const enemy = enemies.get(id)
+  if (!enemy) return
+  enemies.delete(id)
+  useGameStore.setState((s) => ({
+    enemyIds: s.enemyIds.filter((enemyId) => enemyId !== id),
+    money: s.money + enemy.reward,
+  }))
 }
 
 export function leakEnemy(id: number): void {

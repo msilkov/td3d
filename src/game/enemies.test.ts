@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { level1 } from './config/level1'
-import { clearEnemies, leakEnemy, spawnEnemy } from './enemies'
+import { clearEnemies, damageEnemy, killEnemy, leakEnemy, spawnEnemy } from './enemies'
 import { useGameStore } from './store'
 
 const wave = level1.waves[0]
@@ -54,5 +54,29 @@ describe('реестр врагов', () => {
     spawnEnemy(wave)
     clearEnemies()
     expect(useGameStore.getState().enemyIds).toEqual([])
+  })
+
+  it('damageEnemy до hp ≤ 0 убивает врага и даёт награду', () => {
+    const id = spawnEnemy(wave)
+    damageEnemy(id, wave.enemyHp - 1)
+    expect(useGameStore.getState().enemyIds).toEqual([id])
+    damageEnemy(id, 1)
+    const { money, enemyIds } = useGameStore.getState()
+    expect(enemyIds).toEqual([])
+    expect(money).toBe(level1.startMoney + wave.reward)
+  })
+
+  it('повторный killEnemy не начисляет награду второй раз', () => {
+    const id = spawnEnemy(wave)
+    killEnemy(id)
+    killEnemy(id)
+    expect(useGameStore.getState().money).toBe(level1.startMoney + wave.reward)
+  })
+
+  it('две башни бьют одну цель — награда один раз', () => {
+    const id = spawnEnemy(wave)
+    damageEnemy(id, wave.enemyHp)
+    damageEnemy(id, wave.enemyHp)
+    expect(useGameStore.getState().money).toBe(level1.startMoney + wave.reward)
   })
 })
