@@ -22,7 +22,9 @@ jobs:
       # Не секреты, а идентификаторы проекта: те же, что в .vercel/project.json.
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      # Токен — нет: он выдаётся только шагам Vercel ниже, чтобы npm ci и код
+      # зависимостей в линтере и тестах его не видели.
+      VERCEL_CLI: 60.1.3
 
     steps:
       # Прод собирается только из main. Запуск с другой ветки — почти всегда
@@ -50,11 +52,19 @@ jobs:
           npm run lint
           npm test
 
+      # Версия CLI закреплена: с прод-токеном исполняется ровно проверенный код,
+      # а не то, что окажется в npm под latest в момент запуска.
       - name: Забрать настройки проекта
-        run: npx vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: npx vercel@$VERCEL_CLI pull --yes --environment=production --token="$VERCEL_TOKEN"
 
       - name: Собрать
-        run: npx vercel build --prod --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: npx vercel@$VERCEL_CLI build --prod --token="$VERCEL_TOKEN"
 
       - name: Выкатить
-        run: npx vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: npx vercel@$VERCEL_CLI deploy --prebuilt --prod --token="$VERCEL_TOKEN"
